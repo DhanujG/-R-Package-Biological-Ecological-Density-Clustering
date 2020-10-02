@@ -1,0 +1,23 @@
+---
+title: "PackageCreation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+install.packages("devtools")
+install.packages("roxygen2")
+```
+
+
+```{r}
+devtools::create("EEB Density Clustering")
+
+```
+
+

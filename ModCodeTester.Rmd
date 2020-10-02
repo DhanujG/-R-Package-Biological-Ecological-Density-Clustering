@@ -1,0 +1,206 @@
+
+#Install R3.4.0
+#Install Rtools34.exe > https://cran.r-project.org/bin/windows/Rtools/history.html
+#Use R 3.4 > change in Tool s > Global Options > General >R Version
+```{r}
+#install.packages("rmarkdown")
+#update.packages(ask = FALSE)
+#install.packages("Rcpp")\
+
+install.packages("reticulate")
+
+
+```
+#Make sure built under R 3.4.0
+#Restart Rstudio
+
+
+---
+title: "testing modified density clustering code"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+----------------------------------------------------------------------------------
+
+```{r}
+
+#writeLines(strsplit(Sys.getenv("PATH"), ";")[[1L]])
+library(Rcpp)
+source("RcppExports.R")
+source("plotDensityClust.R")
+source("densityClust.R")
+#sourceCpp("RcppExports.cpp")
+sourceCpp("localDensity.cpp")
+sourceCpp("findDistValueByRowColInd.cpp")
+sourceCpp("distanceToPeak.cpp")
+```
+
+---------------BCI Data--------------------------
+
+#Read in the BCI Data
+```{r}
+Colnames = c('X','Y','Weight')
+BCI_3_Null <- read.csv(file.choose(), header = FALSE)
+#dimnames(BCI_3_Null) <- NULL
+```
+
+```{r}
+BCI_Weights <- as.vector(BCI_3_Null[,3])
+BCI_Noweights <- as.vector(BCI_3_Null[,1:2])
+BCIDist <- dist(BCI_3_Null[,1:2])
+```
+
+#cluster with non-gaussian distance
+
+```{r}
+BCIClust <- densityClust(BCI_Noweights, BCI_Weights, BCIDist, gaussian=TRUE, verbose = TRUE)
+```
+
+
+#get validation metrics fro rho/gamma combinations
+```{r}
+
+
+BCIChart <- findCluster_validationChart(BCIClust)
+
+```
+
+#Plot the BCI Data with Chosen Clusters
+```{r}
+
+
+plot(BCIClust) # Inspect clustering attributes to define thresholds
+BCIClust <- findClusters(BCIClust, rho=1600, delta=0.15, verbose = FALSE)
+BCIMDS = plotMDS(BCIClust)
+#split(iris[,5], BCIClust$clusters)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+---------Test Code/ Old Code---------------
+
+
+
+```{r}
+iris <- iris
+noweights <- rep(1,150)
+irisDist <- dist(iris[,1:4])
+irisClust <- densityClust(iris[,1:4], noweights, irisDist, gaussian=TRUE)
+plot(irisClust) # Inspect clustering attributes to define thresholds
+
+
+
+
+```
+
+```{r}
+irisChart <- findCluster_validationChart(irisClust)
+```
+
+```{r}
+irisClust <- findClusters(irisClust, rho=4, delta=1)
+mds = plotMDS(irisClust)
+
+#split(iris[,5], irisClust$clusters)
+```
+
+
+Create A Formatted Dataset where each value is multiplied to fit it's num of observations
+```{r}
+
+total = nrow(BCI_3_Null)
+
+BCI_3_Format <- data.frame("Cord1" =  double(), "Cord2" = double())
+
+for (i in 1:total){
+  for (j in 1:(BCI_3_Null[i,3])){
+    newRow <- BCI_3_Null[i,1:2]
+    BCI_3_Format<- rbind(BCI_3_Format, newRow)
+  }
+}
+    
+```
+
+
+
+```{r}
+same = 0
+frame = BCI_3_Null
+total = nrow(frame)
+for (i in 1:total){
+  for (j in 1:total){
+    if ((i != j) & (frame[i,1] == frame[j,1]) & (frame[i,2] == frame[j,2])){
+      same = 1
+      cat("same value detected at rows ")
+      i
+      j
+    }
+  }
+}
+
+if (same == 0){
+  cat("no rows same ")
+}
+```
+
+#make sure distance has no 0 values
+```{r}
+BCIDist <- dist(BCI_3_Null[,1:2])
+
+
+d = as.matrix(BCIDist)
+
+
+same = 0
+total = nrow(d)
+for (i in 1:total){
+  for (j in 1:total){
+    if ((i != j) & (d[i,j] == 0.0)){
+      same = 1
+      cat("same dist detected at rows ")
+      i
+      j
+    }
+  }
+}
+
+if (same == 0){
+  cat("no dist = 0 ")
+}
+```
+
+
+
+#cluster without gaussian distance
+```{r}
+BCIDist <- dist(BCI_3_Null[,1:2])
+
+
+
+BCIClust <- densityClust(BCIDist, gaussian=FALSE)
+plot(BCIClust) # Inspect clustering attributes to define thresholds
+
+BCIClust2 <- findClusters(BCIClust, rho=5, delta=0.15, verbose = TRUE)
+plotMDS(BCIClust2)
+#split(iris[,5], BCIClust$clusters)
+
+```
+
+
+

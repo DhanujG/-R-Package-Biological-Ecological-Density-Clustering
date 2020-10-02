@@ -1,0 +1,2 @@
+centroid,counts,dispersion
+4.197372,18368,2213.780861

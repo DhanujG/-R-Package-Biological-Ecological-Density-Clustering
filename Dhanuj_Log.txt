@@ -1,0 +1,35 @@
+My log to keep track of completed tasks and tasks to complete
+
+NOTE#  IMPLEMENTED 
+
+
+Added Python Functionality in findvalidation for DBCV - DONE
+
+Editing Estimate DC from DensityClust to include weights - DONE
+
+Editing Densityclust else statement (r dist matrix passed in) for localdensity to include weights
+        First editing Non Gaussian -DONE
+        First editing Gaussian -DONE (check again for mathematical validity)
+
+Weight Functionality is working!
+
+Editing PlotMDS to scale points based on weights- DONE
+
+DBCV fixed without weights- DONE
+
+Cluster center shape turned into filled triangle with cross mark
+
+DBCV implemented into regular cluster execution
+
+
+
+
+NOTE#  TODO implement   
+
+     
+			DBCV with weights
+			Fix plots in densityclust and execute 
+			knn with weights 
+			convert dbcv to c++
+			convert density clust to main
+			Wrap in Package
