@@ -871,6 +871,8 @@ findCluster_validationChart.densityCluster <- function(x, rho_step = 0, delta_st
 
         testClusters[nrow(testClusters) + 1, ] = c(rho, delta, (rho*delta), length(x$peaks), length(x$halo[x$halo == TRUE]), 0, tempDBCV )
       }
+
+      print(cat("Testing complete for Rho = " , rho , "; Delta = " , delta))
     }
   }
 

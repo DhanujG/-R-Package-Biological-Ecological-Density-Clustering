@@ -31,7 +31,7 @@ def DBCV(fpath, labelpath, weightpath, dist_function=euclidean):
     graph = _mutual_reach_dist_graph(X, labels, weights, dist_function)
     #print("making MST")
     graph = np.array(graph, dtype=float)
-    e = np.savetxt('output.txt', graph, comments="#", delimiter=",")
+    #e = np.savetxt('output.txt', graph, comments="#", delimiter=",")
     mst = _mutual_reach_dist_MST(graph)
     #print("assigning cluster validity")
     cluster_validity = _clustering_validity_index(mst, labels)

@@ -76,8 +76,9 @@ BCIChart <- findCluster_validationChart(BCIClust)
 
 
 plot(BCIClust) # Inspect clustering attributes to define thresholds
-BCIClust <- findClusters(BCIClust, rho=1600, delta=0.15, verbose = FALSE)
+BCIClust <- findClusters(BCIClust, rho=338, delta=0.21, verbose = FALSE)
 BCIMDS = plotMDS(BCIClust)
+#BCIRaw = plot()
 #split(iris[,5], BCIClust$clusters)
 ```
 
