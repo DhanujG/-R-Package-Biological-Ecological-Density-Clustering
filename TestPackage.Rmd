@@ -115,8 +115,11 @@ irisChart <- findCluster_validationChart(irisClust)
 ```
 
 ```{r}
-irisClust <- findClusters(irisClust, rho=4, delta=1)
+irisClust <- findClusters(irisClust, rho=0.01, delta=0.74)
+raw = plot(irisClust)
 mds = plotMDS(irisClust)
+tsne = plotTSNE(irisClust)
+
 
 #split(iris[,5], irisClust$clusters)
 ```

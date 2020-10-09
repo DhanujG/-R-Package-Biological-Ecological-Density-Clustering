@@ -30,7 +30,7 @@ def DBCV(fpath, labelpath, weightpath, dist_function=euclidean):
     #print(weights)
     graph = _mutual_reach_dist_graph(X, labels, weights, dist_function)
     #print("making MST")
-    graph = np.array(graph, dtype=float)
+    graph = np.array(graph, dtype=object)
     #e = np.savetxt('output.txt', graph, comments="#", delimiter=",")
     mst = _mutual_reach_dist_MST(graph)
     #print("assigning cluster validity")
@@ -57,9 +57,13 @@ def _core_dist(point, weight, neighbors, neighborweights, dist_function):
     n_neighbors = np.sum(neighborweights) + weight - 1
 
     """n_neighbors = np.shape(neighbors)[0]
+
     distance_vector = cdist(point.reshape(1, -1), neighbors)
+
     distance_vector = distance_vector[distance_vector != 0]
+
     numerator = ((1/distance_vector)**n_features).sum()
+
     core_dist = (numerator / (n_neighbors - 1)) ** (-1/n_features)"""
 
     numerator = 0
@@ -69,18 +73,23 @@ def _core_dist(point, weight, neighbors, neighborweights, dist_function):
         numerator = numerator + (((1/distance)**n_features)*neighborweights[i])"""
 
     distance_vector = cdist(point.reshape(1, -1), neighbors)
+
     numerator_vector = distance_vector
     for i in range(np.shape(neighbors)[0]):
+
         temp = distance_vector[0][i]
+
         if ( temp == 0):
             numerator_vector[0][i] = 0
         else:
-            numerator_vector[0][i] = ((1/distance_vector[0][i])**n_features)
+            numerator_vector[0][i] = (((1/distance_vector[0][i])**n_features)) 
+
+            
     
     numerator = np.dot(numerator_vector, neighborweights)
 
 
-    core_dist = (numerator / (n_neighbors - 1)) ** (-1/n_features)
+    core_dist = (numerator / (n_neighbors)) ** (-1/n_features)
     
     return core_dist
 
@@ -136,13 +145,16 @@ def _mutual_reach_dist_graph(X, labels, weights, dist_function):
             class_j = labels[col]
             weight_i = weights[row]
             weight_j = weights[col]
+
             members_i = _get_label_members(X, labels, class_i)
             members_j = _get_label_members(X, labels, class_j)
             memberweights_i = _get_label_members(weights, labels, class_i)
             memberweights_j = _get_label_members(weights, labels, class_j)
+
             dist = _mutual_reachability_dist(point_i, point_j,
                                              members_i, members_j, weight_i, weight_j,memberweights_i, memberweights_j, 
                                              dist_function)
+
             graph_row.append(dist)
         counter += 1
         graph.append(graph_row)
