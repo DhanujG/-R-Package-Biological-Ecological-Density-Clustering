@@ -316,7 +316,8 @@ densityClust <- function(orig, weights, distance, dc, gaussian=FALSE, verbose = 
       threshold = c(rho = NA, delta = NA), 
       peaks = NA, 
       clusters = NA,
-      clusters2 = NA, 
+      clusters2 = NA,
+      clustersSpectral = NA, 
       halo = NA, 
       knn_graph = NA, 
       nearest_higher_density_neighbor = NA, 
@@ -546,6 +547,65 @@ plotTSNE.densityCluster <- function(x, max_components = 2, ...) {
 }
 #' @export
 #'
+
+
+plotSPECTRAL <- function(x, ...) {
+  UseMethod('plotSPECTRAL')
+}
+#' @export
+#' @importFrom stats cmdscale
+#' @importFrom graphics plot points legend
+#' @importFrom stats dist
+plotSPECTRAL.densityCluster <- function(x, ...) {
+  
+  mds <- x$orig
+
+  
+  if (length(x$peaks) == 1){
+  plot(mds[,1], mds[,2], xlab = '', ylab = '', main = 'RAW plot of observations')
+  } else {
+  plot(mds[,1], mds[,2], xlab = '', ylab = '', main = 'RAW plot of observations', cex = 0.5, col = 0)
+  }
+  mds
+
+  #Scale the weights for each point to match their new point size
+  if ( max(x$weights)!=  min(x$weights)){
+    cex_weights = 2*((x$weights-min(x$weights))/(max(x$weights)-min(x$weights))) + 0.5
+  } else {
+    cex_weights = (x$weights)/(max(x$weights))*0.5
+  }
+
+
+  if (!is.na(x$peaks[1])) {
+    for (i in 1:length(x$peaks)) {
+      #print(i)
+      ind <- which(x$clustersSpectral == i)
+      #print(ind)
+      #points(mds[ind, 1], mds[ind, 2], col = i + 1, pch = ifelse(x$halo[ind], 1, 19))
+      for (index in ind){
+        if (index == x$peaks[i]){
+          #print("center_found")
+          print(cex_weights[index])
+          points(mds[index, 1], mds[index, 2], col = (1), pch = 4, cex = cex_weights[index])
+          points(mds[index, 1], mds[index, 2], col = (i + 1), pch = ifelse(x$halo[index], 2, 17), cex = cex_weights[index])
+          
+        }
+        else {
+          #print("other_point")
+          points(mds[index, 1], mds[index, 2], col = (i + 1), pch = ifelse(x$halo[index], 1, 19), cex = cex_weights[index])
+        }
+        
+      }
+    }
+    legend('topright', legend = c('core', 'halo'), pch = c(19, 1), horiz = TRUE)
+  }
+  
+}
+
+
+
+
+
 print.densityCluster <- function(x, ...) {
   if (is.na(x$peaks[1])) {
     cat('A densityCluster object with no clusters defined\n\n')
@@ -1111,6 +1171,84 @@ findCluster_validationChart.densityCluster <- function(x, rho_step = 0, delta_st
 
   testClusters
 }
+
+
+
+
+# matrix power operator: computes M^power (M must be diagonalizable)
+"%^%" <- function(M, power)
+  with(eigen(M), vectors %*% (values^power * solve(vectors)))
+
+
+findSpectral <- function(x, ...) {
+  UseMethod("findSpectral")
+}
+
+findSpectral.densityCluster <- function(x, neighbors, ...) {
+
+  #compute an affinity matrix A based on S. A must be made of positive values and be symmetric.
+
+  N  <- nrow(x$orig)
+  S <- matrix(rep(NA,N^2), ncol=N)
+  og <- x$distance
+  new <-  attr(og, "Size")
+
+  for(i in 1:N) {
+    for(j in 1:N) {
+      if(i < j){
+        S[i,j] <- og[(new*(i-1) - i*(i-1)/2 + j-i)]
+        S[j,i] <- og[(new*(i-1) - i*(i-1)/2 + j-i)]
+      } else if (i == j){
+        S[i,j] <- 1
+      }
+    }
+  }
+
+
+
+  N <- length(S[,1])
+
+  if (neighbors >= N) {  # fully connected
+    A <- S
+  } else {
+    A <- matrix(rep(0,N^2), ncol=N)
+    for(i in 1:N) { # for each line
+      # only connect to those points with larger similarity 
+      best.similarities <- sort(S[i,], decreasing=TRUE)[1:neighbors]
+      for (s in best.similarities) {
+        j <- which(S[i,] == s)
+        A[i,j] <- S[i,j]
+        A[j,i] <- S[i,j] # to make an undirected graph, ie, the matrix becomes symmetric
+      }
+    }
+  }
+  #A  
+
+
+  #There is the need of a degree matrix D where each diagonal value is the degree of the respective vertex and all other positions are zero:
+  D <- diag(apply(A, 1, sum))
+
+  #compute the unnormalized graph Laplacian (U=D−A) and/or a normalized version (L). The normalized Laplacian
+  U <- D - A
+
+
+  # Assuming we want k clusters, the next step is to find the k smallest eigenvectors (ignoring the trivial constant eigenvector).
+  k   <- neighbors
+  evL <- eigen(U, symmetric=TRUE)
+  Z   <- evL$vectors[,(ncol(evL$vectors)-k+1):ncol(evL$vectors)]
+
+
+
+  #in this transformed space it becomes easy for a standard k-means clustering to find the appropriate clusters:
+  km <- stats::kmeans(Z, centers=k, nstart=5)
+  plot(x$orig, col=km$cluster)
+
+  x$clustersSpectral <- km$cluster
+  x
+
+}
+
+
 
 #' Extract cluster membership from a densityCluster object
 #'

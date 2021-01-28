@@ -21,12 +21,27 @@ Cluster center shape turned into filled triangle with cross mark
 
 DBCV implemented into regular cluster execution
 
+DBCV was null with weighted points
+
+Created RAW and TSNE plots
+
+Created Spectral Clustering
+	-need to double check distance implementation and plot implementation
+
+
 
 
 
 NOTE#  TODO implement   
 
      
+			Implement knn
+			Implement Validation Metrics
+			Implement DBSCAN
+			Clean up code 
+			Publish Package
+			
+			
 			Get working - fix MST with weights
 			Create Package
 			DBCV with weights
