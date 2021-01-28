@@ -14,9 +14,13 @@ install.packages("devtools")
 install.packages("roxygen2")
 ```
 
+```{r}
+library(devtools)
+library(roxygen2)
+```
 
 ```{r}
-devtools::create("EEB Density Clustering")
+devtools::create('weighted.point.clustering.with.validation')
 
 ```
 

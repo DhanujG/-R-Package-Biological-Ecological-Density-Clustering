@@ -1,8 +1,8 @@
-library(reticulate)
+#library(reticulate)
 #py_install("scipy")
 #use_python("/usr/local/bin/python")
 #use_virtualenv("myenv")
-source_python("DBCV.py")
+reticulate::source_python("DBCV.py")
 
 
 
@@ -303,6 +303,7 @@ densityClust <- function(orig, weights, distance, dc, gaussian=FALSE, verbose = 
     
     if (verbose) message('Returning result...')
     res <- list(
+      orig = orig,
       size = attr(distance, 'Size'),
       truesize = sum(weights),
       weights = weights,
@@ -386,6 +387,67 @@ plotMDS.densityCluster <- function(x, ...) {
   plot(mds[,1], mds[,2], xlab = '', ylab = '', main = 'MDS plot of observations')
   } else {
   plot(mds[,1], mds[,2], xlab = '', ylab = '', main = 'MDS plot of observations', cex = 0.5, col = 0)
+  }
+  mds
+
+  #Scale the weights for each point to match their new point size
+  if ( max(x$weights)!=  min(x$weights)){
+    cex_weights = 2*((x$weights-min(x$weights))/(max(x$weights)-min(x$weights))) + 0.5
+  } else {
+    cex_weights = (x$weights)/(max(x$weights))*0.5
+  }
+
+
+  if (!is.na(x$peaks[1])) {
+    for (i in 1:length(x$peaks)) {
+      #print(i)
+      ind <- which(x$clusters == i)
+      #print(ind)
+      #points(mds[ind, 1], mds[ind, 2], col = i + 1, pch = ifelse(x$halo[ind], 1, 19))
+      for (index in ind){
+        if (index == x$peaks[i]){
+          #print("center_found")
+          print(cex_weights[index])
+          points(mds[index, 1], mds[index, 2], col = (1), pch = 4, cex = cex_weights[index])
+          points(mds[index, 1], mds[index, 2], col = (i + 1), pch = ifelse(x$halo[index], 2, 17), cex = cex_weights[index])
+          
+        }
+        else {
+          #print("other_point")
+          points(mds[index, 1], mds[index, 2], col = (i + 1), pch = ifelse(x$halo[index], 1, 19), cex = cex_weights[index])
+        }
+        
+      }
+    }
+    legend('topright', legend = c('core', 'halo'), pch = c(19, 1), horiz = TRUE)
+  }
+  
+}
+
+plotRAW <- function(x, ...) {
+  UseMethod('plotRAW')
+}
+#' @export
+#' @importFrom stats cmdscale
+#' @importFrom graphics plot points legend
+#' @importFrom stats dist
+
+plotRAW <- function(x, ...) {
+  UseMethod('plotRAW')
+}
+#' @export
+#' @importFrom stats cmdscale
+#' @importFrom graphics plot points legend
+#' @importFrom stats dist
+plotRAW.densityCluster <- function(x, ...) {
+  
+  mds <- x$orig
+
+  
+  if (length(x$peaks) == 1){
+  plot(mds[,1], mds[,2], xlab = '', ylab = '', main = 'RAW plot of observations')
+  } else {
+  plot(mds[,1], mds[,2], xlab = '', ylab = '', main = 'RAW plot of observations', cex = 0.5, col = 0)
   }
   mds
 
@@ -677,6 +739,157 @@ findClusters.densityCluster <- function(x, rho, delta, plot = FALSE, peaks = NUL
         x$clusters2[z] = x$peaks[x$clusters[z]]
         }
 
+        #cpath = paste(getwd(), "/temp_cluster.txt", sep = "")
+       # write.table(x$clusters2, file = cpath, col.names = F, row.names =F, sep = ",")
+        
+
+        
+        
+        
+        #tempDBCV <- DBCV(x$fpath,cpath,x$wpath)
+        #print("DBCV is: ")
+        #print(tempDBCV)
+        
+
+
+        
+      }
+  
+  x
+}
+
+
+findClusters_dbcv.densityCluster <- function(x, rho, delta, plot = FALSE, peaks = NULL, verbose = FALSE, ...) {
+
+  if (class(x$distance) %in% c('data.frame', 'matrix')) {
+    peak_ind <- which(x$rho > rho & x$delta > delta)
+    x$peaks <- peak_ind
+    
+    # Assign observations to clusters
+    runOrder <- order(x$rho, decreasing = TRUE)
+    cluster <- rep(NA, length(x$rho))
+    
+    #replace certain values in cluster matrix with the cluster centers
+    for (i in x$peaks) {
+      cluster[i] <- match(i, x$peaks)
+    } 
+
+    #for all indexs that arent in the orginal cluster centers
+    for (ind in setdiff(runOrder, x$peaks)) { 
+
+      #set target_* to the index where the nearest higher density neighbors of each point are equal to the non cluster center
+      target_lower_density_samples <- which(x$nearest_higher_density_neighbor == ind) #all the target cells should have the same cluster id as current higher density cell
+      
+      cluster[ind] <- cluster[x$nearest_higher_density_neighbor[ind]]
+    }
+    
+
+    #now the cluster matrix consists of cluster centers [ind] = point and other points of highest near density
+
+
+    potential_duplicates <- which(is.na(cluster))
+    for (ind in potential_duplicates) {
+      res <- as.integer(names(which.max(table(cluster[x$nn.index[ind, ]]))))
+      
+      if (length(res) > 0) {
+        cluster[ind] <- res #assign NA samples to the majority of its clusters 
+      } else {
+        message('try to increase the number of kNN (through argument k) at step of densityClust.')
+        cluster[ind] <- NA
+      }
+    }
+    
+    x$clusters <- factor(cluster)
+    
+    # Calculate core/halo status of observation
+    border <- rep(0, length(x$peaks))
+    if (verbose) message('Identifying core and halo for each cluster')
+    
+    for (i in 1:length(x$peaks)) {
+      if (verbose) message('the current index of the peak is ', i)
+      
+      #intersection of 
+      connect_samples_ind <- intersect(unique(x$nn.index[cluster == i, ]), which(cluster != i))
+
+      averageRho <- outer(x$rho[cluster == i], x$rho[connect_samples_ind], '+') / 2 
+
+      if (any(connect_samples_ind)) border[i] <- max(averageRho[connect_samples_ind]) 
+    }
+    x$halo <- x$rho < border[cluster] 
+    
+    x$threshold['rho'] <- rho
+    x$threshold['delta'] <- delta
+  } 
+  else {
+    # Detect cluster peaks
+    if (!is.null(peaks)) {
+      
+      if (verbose) message('peaks are provided, clustering will be performed based on them')
+      x$peaks <- peaks
+    } else {
+      if (missing(rho) || missing(delta)) {
+        x$peaks <- NA
+        plot(x)
+        cat('Click on plot to select thresholds\n')
+        threshold <- locator(1)
+        if (missing(rho)) rho <- threshold$x
+        if (missing(delta)) delta <- threshold$y
+        plot = TRUE
+      }
+      x$peaks <- which(x$rho > rho & x$delta > delta)
+      x$threshold['rho'] <- rho
+      x$threshold['delta'] <- delta
+    }
+    if (plot) {
+      plot(x)
+    }
+    
+    # Assign observations to clusters
+    runOrder <- order(x$rho, decreasing = TRUE)
+    cluster <- rep(NA, length(x$rho))
+    if (verbose) message('Assigning each sample to a cluster based on its nearest density peak')
+    for (i in runOrder) { 
+      if ((i %% round(length(runOrder) / 25)) == 0) {
+        if (verbose) message(paste('the runOrder index is', i))
+      }
+      
+      if (i %in% x$peaks) {
+        cluster[i] <- match(i, x$peaks)
+      } else {
+        higherDensity <- which(x$rho > x$rho[i])
+        cluster[i] <- cluster[higherDensity[which.min(findDistValueByRowColInd(x$distance, attr(x$distance, 'Size'), i, higherDensity))]] 
+      }
+    }
+    x$clusters <- cluster
+    
+    # Calculate core/halo status of observation
+    border <- rep(0, length(x$peaks))
+    if (verbose) message('Identifying core and halo for each cluster')
+    for (i in 1:length(x$peaks)) {
+      if (verbose) message('the current index of the peak is ', i)
+      
+      averageRho <- outer(x$rho[cluster == i], x$rho[cluster != i], '+')/2 
+      index <- findDistValueByRowColInd(x$distance, attr(x$distance, 'Size'), which(cluster == i), which(cluster != i)) <= x$dc 
+      if (any(index)) border[i] <- max(averageRho[index]) 
+    }
+    x$halo <- x$rho < border[cluster] 
+  }
+  x$halo <- x$rho < border[cluster]
+  
+  # Sort cluster designations by gamma (= rho * delta)
+  gamma <- x$rho * x$delta
+  pk.ordr <- order(gamma[x$peaks], decreasing = TRUE)
+  x$peaks <- x$peaks[pk.ordr]
+  
+  x$clusters <- match(x$clusters, pk.ordr)
+
+
+  if (length(x$peaks) > 1 && (length(x$peaks) < 20) ){
+
+        for (z in 1:x$size){
+        x$clusters2[z] = x$peaks[x$clusters[z]]
+        }
+
         cpath = paste(getwd(), "/temp_cluster.txt", sep = "")
         write.table(x$clusters2, file = cpath, col.names = F, row.names =F, sep = ",")
         
@@ -696,7 +909,7 @@ findClusters.densityCluster <- function(x, rho, delta, plot = FALSE, peaks = NUL
   x
 }
 
-findCluster_validationChart.densityCluster <- function(x, rho_step = 0, delta_step = 0, plot = FALSE, peaks = NULL, verbose = FALSE, ...) {
+findCluster_validationChart.densityCluster <- function(x, rho_step = 0, delta_step = 0, status = FALSE, DBCV = FALSE, plot = FALSE, peaks = NULL, verbose = FALSE, ...) {
   
   #obtain max, min rho
   rho_max = max(x$rho) - 0.01
@@ -717,8 +930,12 @@ findCluster_validationChart.densityCluster <- function(x, rho_step = 0, delta_st
   Rho_Vals <- seq(from = rho_min , to = rho_max , by = rho_step)
   Delta_Vals <- seq(from = delta_min , to = delta_max , by = delta_step)
 
-  testClusters <- data.frame(Rho = double(), Delta = double(), Gamma = double(), ClusterCenters = integer(), Unclassified = integer(), NumOutliers = integer(), DBCV = double())
+  if(DBCV == TRUE){
+    testClusters <- data.frame(Rho = double(), Delta = double(), Gamma = double(), ClusterCenters = integer(), Unclassified = integer(), NumOutliers = integer(), DBCV = double())
+  } else {
+    testClusters <- data.frame(Rho = double(), Delta = double(), Gamma = double(), ClusterCenters = integer(), Unclassified = integer(), NumOutliers = integer())
 
+  }
   #implement for loop
 
   for (rho_temp in Rho_Vals){
@@ -859,20 +1076,36 @@ findCluster_validationChart.densityCluster <- function(x, rho_step = 0, delta_st
         for (z in 1:x$size){
         x$clusters2[z] = x$peaks[x$clusters[z]]
         }
+        if (DBCV == TRUE){
 
-        cpath = paste(getwd(), "/temp_cluster.txt", sep = "")
-        write.table(x$clusters2, file = cpath, col.names = F, row.names =F, sep = ",")
+
+          cpath = paste(getwd(), "/temp_cluster.txt", sep = "")
+          write.table(x$clusters2, file = cpath, col.names = F, row.names =F, sep = ",")
         
-        #print(x$clusters)
-        #message(paste("Running DBCV for cluster number:", length(x$peaks)))
-        tempDBCV <- DBCV(x$fpath,cpath,x$wpath)
-        #message(paste("DBCV was: ", tempDBCV))
+          #print(x$clusters)
+          #message(paste("Running DBCV for cluster number:", length(x$peaks)))
+          tempDBCV <- DBCV(x$fpath,cpath,x$wpath)
+          #message(paste("DBCV was: ", tempDBCV))
 
 
-        testClusters[nrow(testClusters) + 1, ] = c(rho, delta, (rho*delta), length(x$peaks), length(x$halo[x$halo == TRUE]), 0, tempDBCV )
+          testClusters[nrow(testClusters) + 1, ] = c(rho, delta, (rho*delta), length(x$peaks), length(x$halo[x$halo == TRUE]), 0, tempDBCV )
+        } else {
+
+          cpath = paste(getwd(), "/temp_cluster.txt", sep = "")
+          write.table(x$clusters2, file = cpath, col.names = F, row.names =F, sep = ",")
+        
+          
+
+
+          testClusters[nrow(testClusters) + 1, ] = c(rho, delta, (rho*delta), length(x$peaks), length(x$halo[x$halo == TRUE]), 0)
+        
+        }
       }
 
-      print(cat("Testing complete for Rho = " , rho , "; Delta = " , delta))
+      if (status == TRUE){
+        print(cat("Testing complete for Rho = " , rho , "; Delta = " , delta))
+      }
+      
     }
   }
 

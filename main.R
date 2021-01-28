@@ -1,8 +1,8 @@
-library(reticulate)
+#library(reticulate)
 #py_install("scipy")
 #use_python("/usr/local/bin/python")
 #use_virtualenv("myenv")
-source_python("DBCV.py")
+source_python("DBCV.py")::reticulate()
 
 
 

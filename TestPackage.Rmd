@@ -11,7 +11,7 @@ install.packages("reticulate")
 
 
 ```
-#Make sure built under R 3.4.0
+#Make sure built under R 4.0.0
 #Restart Rstudio
 
 
@@ -32,6 +32,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #writeLines(strsplit(Sys.getenv("PATH"), ";")[[1L]])
 library(Rcpp)
+library(reticulate)
 source("RcppExports.R")
 source("plotDensityClust.R")
 source("densityClust.R")
@@ -40,8 +41,11 @@ sourceCpp("localDensity.cpp")
 sourceCpp("findDistValueByRowColInd.cpp")
 sourceCpp("distanceToPeak.cpp")
 ```
+```{r}
 
----------------BCI Data--------------------------
+```
+
+---------------BCI Data Prep--------------------------
 
 #Read in the BCI Data
 ```{r}
@@ -56,6 +60,9 @@ BCI_Noweights <- as.vector(BCI_3_Null[,1:2])
 BCIDist <- dist(BCI_3_Null[,1:2])
 ```
 
+
+---------------BCI Data with Rodriguez Clustering--------------------------
+
 #cluster with non-gaussian distance
 
 ```{r}
@@ -67,8 +74,8 @@ BCIClust <- densityClust(BCI_Noweights, BCI_Weights, BCIDist, gaussian=TRUE, ver
 ```{r}
 
 
-BCIChart <- findCluster_validationChart(BCIClust)
-
+BCIChart1 <- findCluster_validationChart(BCIClust, DBCV = FALSE, status = FALSE)
+View(BCIChart1)
 ```
 
 #Plot the BCI Data with Chosen Clusters
@@ -76,9 +83,12 @@ BCIChart <- findCluster_validationChart(BCIClust)
 
 
 plot(BCIClust) # Inspect clustering attributes to define thresholds
-BCIClust <- findClusters(BCIClust, rho=338, delta=0.21, verbose = FALSE)
+BCIClust <- findClusters(BCIClust, rho=4.01, delta=0.21, verbose = FALSE)
+#BCIClust <- findClusters_DBCV(BCIClust, rho=338, delta=0.21, verbose = FALSE)
+BCIRAW = plotRAW(BCIClust)
 BCIMDS = plotMDS(BCIClust)
-#BCIRaw = plot()
+BCITSNE = plotTSNE(BCIClust)
+
 #split(iris[,5], BCIClust$clusters)
 ```
 
@@ -92,9 +102,45 @@ BCIMDS = plotMDS(BCIClust)
 
 
 
+---------------BCI Weights as third dimension--------------------------
+
+```{r}
+BCI_Weights <- rep(1,224)
+BCI_Noweights <- as.vector(BCI_3_Null[,1:3])
+BCIDist <- dist(BCI_3_Null[,1:2])
+
+```
 
 
----------Test Code/ Old Code---------------
+```{r}
+BCIClust <- densityClust(BCI_Noweights, BCI_Weights, BCIDist, gaussian=TRUE, verbose = TRUE)
+```
+
+
+
+```{r}
+BCIChart2 <- findCluster_validationChart(BCIClust, DBCV = FALSE, status = FALSE)
+View(BCIChart2)
+```
+
+```{r}
+plot(BCIClust)
+BCIClust <- findClusters(BCIClust, rho=2.31, delta=0.101, verbose = FALSE)
+BCIRAW = plotRAW(BCIClust)
+BCIMDS = plotMDS(BCIClust)
+BCITSNE = plotTSNE(BCIClust)
+```
+
+
+
+
+
+
+
+
+
+
+---------Test Iris Code/ Old Code---------------
 
 
 

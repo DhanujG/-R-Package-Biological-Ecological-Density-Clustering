@@ -27,6 +27,8 @@ DBCV implemented into regular cluster execution
 NOTE#  TODO implement   
 
      
+			Get working - fix MST with weights
+			Create Package
 			DBCV with weights
 			Fix plots in densityclust and execute 
 			knn with weights 
